@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: django-app  # Name of the deployment
+spec:
+  replicas: 2  # Number of desired pod replicas
+  selector:
+    matchLabels:
+      app: django  # Selector to match pods with the label "app: django"
+  template:
+    metadata:
+      labels:  # Labels to be applied to the pods
+        app: django  # Ensure consistency with the selector
+    spec:
+      containers:
+        - name: django-container  # Name of the container
+          image: ranasonu17/django-app:v1  # Docker image to use
+            # readinessProb
+            # exec:
+            #  command: ["sh","-c","python manage.py check --database=default"]
+          ports:
+            - containerPort: 8000  # Port on which the container listens
+          env:  # Define environment variables here
+            - name: DB_NAME
+              value: "django_db"  # Name of your database
+            - name: DB_USER
+              value: "rahul"  # MySQL user
+            - name: DB_PASSWORD
+              value: "1234"  # Password for the MySQL user
+            - name: DB_HOST
+              value: "mysql-0.mysql-svc"    
+          resources:
+            requests:
+              cpu: "25m"
+              memory: "100Mi"
+
+            limits:
+              cpu: "50m"
+              memory: "200Mi"
+
+      initContainers:
+        - name: migrate-database
+          
+          image: ranasonu17/django-app:v1
+          env:  # Define environment variables here
+            - name: DB_NAME
+              value: "django_db"  # Name of your database
+            - name: DB_USER
+              value: "rahul"  # MySQL user
+            - name: DB_PASSWORD
+              value: "1234"  # Password for the MySQL user
+            - name: DB_HOST
+              value: "mysql-0.mysql-svc"  # DNS for MySQL
+          command: ['sh', '-c', 'python manage.py migrate']  # Run migration command
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: django-app-service  # Name of the service
+spec:
+  selector:
+    app: django  # Selector must  match pods with the label "app: django"
+  ports:
+    - protocol: TCP
+      port: 8000    # Port that the service will expos
+      targetPort: 8000  #  Port on which the Django app is running inside the container
+      nodePort: 30005  # NodePort for accessing the service externally
+  type: NodePort  # Type of service, allowing external access
